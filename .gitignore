@@ -9,5 +9,7 @@ vendor
 supervisord_linux_amd64
 upx
 dist
-cache
+./cache/*
 log
+*.log
+logs

@@ -553,3 +553,9 @@
 2025-05-22T15:54:57.929+0800	[34mINFO[0m	config_client/config_client.go:433	[client.ListenConfig] no change
 2025-05-22T15:54:57.940+0800	[34mINFO[0m	config_client/config_proxy.go:180	[client.ListenConfig] request params:map[Listening-Configs:sacp-supervisor-configDEFAULT_GROUPc6556e711dc463803baabe1004d149ff13053976-5a04-4950-a803-3642e9e9a95e tenant:13053976-5a04-4950-a803-3642e9e9a95e] header:map[Content-Type:application/x-www-form-urlencoded;charset=utf-8 Long-Pulling-Timeout:30000 accessKey: secretKey:] 
 
+2025-05-22T15:55:27.454+0800	[34mINFO[0m	config_client/config_client.go:433	[client.ListenConfig] no change
+2025-05-22T15:55:27.465+0800	[34mINFO[0m	config_client/config_proxy.go:180	[client.ListenConfig] request params:map[Listening-Configs:sacp-supervisor-configDEFAULT_GROUPc6556e711dc463803baabe1004d149ff13053976-5a04-4950-a803-3642e9e9a95e tenant:13053976-5a04-4950-a803-3642e9e9a95e] header:map[Content-Type:application/x-www-form-urlencoded;charset=utf-8 Long-Pulling-Timeout:30000 accessKey: secretKey:] 
+
+2025-05-22T15:55:56.983+0800	[34mINFO[0m	config_client/config_client.go:433	[client.ListenConfig] no change
+2025-05-22T15:55:56.995+0800	[34mINFO[0m	config_client/config_proxy.go:180	[client.ListenConfig] request params:map[Listening-Configs:sacp-supervisor-configDEFAULT_GROUPc6556e711dc463803baabe1004d149ff13053976-5a04-4950-a803-3642e9e9a95e tenant:13053976-5a04-4950-a803-3642e9e9a95e] header:map[Content-Type:application/x-www-form-urlencoded;charset=utf-8 Long-Pulling-Timeout:30000 accessKey: secretKey:] 
+
