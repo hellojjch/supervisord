@@ -1,25 +1,25 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/ochinchina/supervisord)](https://goreportcard.com/report/github.com/ochinchina/supervisord)
 
-# Why this project?
+# 为什么需要这个项目？
 
-The python script supervisord is a powerful tool used by a lot of guys to manage the processes. I like  supervisord too.
+Python 脚本 supervisord 是一个强大的进程管理工具，被很多人使用。我也很喜欢 supervisord。
 
-But this tool requires that the big python environment be installed in target system. In some situation, for example in the docker environment, the python is too big for us.
+但是这个工具需要在目标系统中安装完整的 Python 环境。在某些情况下，比如在 Docker 环境中，Python 对我们来说太大了。
 
-This project re-implements supervisord in go-lang. Compiled supervisord is very suitable for environments where python is not installed.
+这个项目用 Go 语言重新实现了 supervisord。编译后的 supervisord 非常适合没有安装 Python 的环境。
 
-# Building the supervisord
+# 构建 supervisord
 
-Before compiling the supervisord, make sure the go-lang 1.11+ is installed in your environment.
+在编译 supervisord 之前，请确保你的环境中已安装 Go 语言 1.11+ 版本。
 
-To compile supervisord for **linux**, run following commands:
+要为 **Linux** 编译 supervisord，请运行以下命令：
 
 1. go generate
 2. GOOS=linux go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o supervisord
 
-# Run the supervisord
+# 运行 supervisord
 
-After a supervisord binary has been generated, create a supervisord configuration file and start the supervisord like this:
+生成 supervisord 二进制文件后，创建一个 supervisord 配置文件并按如下方式启动 supervisord：
 
 ```Shell
 $ cat supervisor.conf
@@ -28,32 +28,31 @@ command = /your/program args
 $ supervisord -c supervisor.conf
 ```
 
-Please note that config-file location autodetected in this order:
+请注意，配置文件位置按以下顺序自动检测：
 
 1. $CWD/supervisord.conf
 2. $CWD/etc/supervisord.conf
 3. /etc/supervisord.conf
-4. /etc/supervisor/supervisord.conf (since Supervisor 3.3.0)
-5. ../etc/supervisord.conf (Relative to the executable)
-6. ../supervisord.conf (Relative to the executable)
+4. /etc/supervisor/supervisord.conf (自 Supervisor 3.3.0 起)
+5. ../etc/supervisord.conf (相对于可执行文件)
+6. ../supervisord.conf (相对于可执行文件)
 
+# 以守护进程方式运行并启用 Web UI
 
-# Run as daemon with web-ui
-
-Add the inet interface in your configuration:
+在配置文件中添加 inet 接口：
 
 ```ini
 [inet_http_server]
 port=127.0.0.1:9001
 ```
 
-then run
+然后运行
 
 ```shell
 $ supervisord -c supervisor.conf -d
 ```
 
-In order to manage the daemon, you can use `supervisord ctl` subcommand, available subcommands are: `status`, `start`, `stop`, `shutdown`, `reload`.
+为了管理守护进程，你可以使用 `supervisord ctl` 子命令，可用的子命令有：`status`、`start`、`stop`、`shutdown`、`reload`。
 
 ```shell
 $ supervisord ctl status
@@ -73,85 +72,85 @@ $ supervisord ctl pid <process_name>
 $ supervisord ctl fg <process_name>
 ```
 
-Please note that `supervisor ctl` subcommand works correctly only if http server is enabled in [inet_http_server], and **serverurl** correctly set. Unix domain socket is not currently supported for this pupose.
+请注意，`supervisor ctl` 子命令只有在 [inet_http_server] 中启用了 http 服务器，并且正确设置了 **serverurl** 时才能正常工作。目前不支持 Unix 域套接字用于此目的。
 
-Serverurl parameter detected in the following order:
+Serverurl 参数按以下顺序检测：
 
-- check if option -s or --serverurl is present, use this url
-- check if -c option is present, and the "serverurl" in "supervisorctl" section is present, use "serverurl" in section "supervisorctl"
-- check if "serverurl" in section "supervisorctl" is defined in autodetected supervisord.conf-file location and if it is - use found value
-- use http://localhost:9001
+- 检查是否存在 -s 或 --serverurl 选项，如果存在则使用该 URL
+- 检查是否存在 -c 选项，以及 "supervisorctl" 部分中是否存在 "serverurl"，如果存在则使用 "supervisorctl" 部分中的 "serverurl"
+- 检查自动检测到的 supervisord.conf 文件位置中是否定义了 "supervisorctl" 部分中的 "serverurl"，如果存在则使用找到的值
+- 使用 http://localhost:9001
 
-# Check the version
+# 检查版本
 
-Command "version" will show the current supervisord binary version.
+"version" 命令将显示当前 supervisord 二进制文件的版本。
 
 ```shell
 $ supervisord version
 ```
 
-# Supported features
+# 支持的功能
 
-## Http server
+## Http 服务器
 
-Http server can work via both unix domain socket and TCP. Basic auth is optional and supported too.
+Http 服务器可以通过 Unix 域套接字和 TCP 工作。基本认证是可选的，也受支持。
 
-The unix domain socket setting is in the "unix_http_server" section.
-The TCP http server setting is in "inet_http_server" section.
+Unix 域套接字设置在 "unix_http_server" 部分。
+TCP http 服务器设置在 "inet_http_server" 部分。
 
-If both "inet_http_server" and "unix_http_server" are not set up in the configuration file, no http server will be started.
+如果在配置文件中没有设置 "inet_http_server" 和 "unix_http_server"，则不会启动 http 服务器。
 
-## Supervisord daemon settings
+## Supervisord 守护进程设置
 
-Following parameters configured in "supervisord" section:
+以下参数在 "supervisord" 部分配置：
 
-- **logfile**. Where to put log of supervisord itself.
-- **logfile_maxbytes**. Rotate log-file after it exceeds this length.
-- **logfile_backups**. Number of rotated log-files to preserve.
-- **loglevel**. Logging verbosity, can be trace, debug, info, warning, error, fatal and panic (according to documentation of module used for this feature). Defaults to info.
-- **pidfile**. Full path to file containing process id of current supervisord instance.
-- **minfds**. Reserve al least this amount of file descriptors on supervisord startup. (Rlimit nofiles).
-- **minprocs**. Reserve at least this amount of processes resource on supervisord startup. (Rlimit noproc).
-- **identifier**. Identifier of this supervisord instance. Required if there is more than one supervisord run on one machine in same namespace.
+- **logfile**。supervisord 自身的日志存放位置。
+- **logfile_maxbytes**。当日志文件超过此长度时进行轮转。
+- **logfile_backups**。保留的轮转日志文件数量。
+- **loglevel**。日志详细程度，可以是 trace、debug、info、warning、error、fatal 和 panic（根据用于此功能的模块文档）。默认为 info。
+- **pidfile**。包含当前 supervisord 实例进程 ID 的文件的完整路径。
+- **minfds**。在 supervisord 启动时至少保留此数量的文件描述符。（Rlimit nofiles）。
+- **minprocs**。在 supervisord 启动时至少保留此数量的进程资源。（Rlimit noproc）。
+- **identifier**。此 supervisord 实例的标识符。如果在同一台机器的同一命名空间中运行多个 supervisord，则需要此参数。
 
-## Supervised program settings
+## 被监督程序设置
 
-Supervised program settings configured in [program:programName] section and include these options:
+被监督程序设置在 [program:programName] 部分配置，包括以下选项：
 
-- **command**. Command to supervise. It can be given as full path to executable or can be calculated via PATH variable. Command line parameters also should be supplied in this string. 
-- **process_name**. the process name
-- **numprocs**. number of process
-- **numprocs_start**. ??
-- **autostart**. Should be supervised command run on supervisord start? Defaults to **true**.
-- **startsecs**. The total number of seconds which the program needs to stay running after a startup to consider the start successful (moving the process from the STARTING state to the RUNNING state). Set to 0 to indicate that the program needn’t stay running for any particular amount of time.
-- **startretries**. The number of serial failure attempts that supervisord will allow when attempting to start the program before giving up and putting the process into an FATAL state. See Process States for explanation of the FATAL state.
-- **autorestart**. Automatically re-run supervised command if it dies.
-- **exitcodes**. The list of “expected” exit codes for this program used with autorestart. If the autorestart parameter is set to unexpected, and the process exits in any other way than as a result of a supervisor stop request, supervisord will restart the process if it exits with an exit code that is not defined in this list.
-- **stopsignal**. Signal to send to command to gracefully stop it. If more than one stopsignal is configured, when stoping the program, the supervisor will send the signals to the program one by one with interval "stopwaitsecs". If the program does not exit after all the signals sent to the program, supervisord will kill the program.
-- **stopwaitsecs**. Amount of time to wait before sending SIGKILL to supervised command to make it stop ungracefully.
-- **stdout_logfile**. Where STDOUT of supervised command should be redirected. (Particular values described lower in this file).
-- **stdout_logfile_maxbytes**. Log size after exceed which log will be rotated.
-- **stdout_logfile_backups**. Number of rotated log-files to preserve.
-- **redirect_stderr**. Should STDERR be redirected to STDOUT.
-- **stderr_logfile**. Where STDERR of supervised command should be redirected. (Particular values described lower in this file).
-- **stderr_logfile_maxbytes**. Log size after exceed which log will be rotated.
-- **stderr_logfile_backups**. Number of rotated log-files to preserve.
-- **environment**. List of VARIABLE=value to be passed to supervised program. It has higher priority than `envFiles`.
-- **envFiles**. List of .env files to be loaded and passed to supervised program. 
-- **priority**. The relative priority of the program in the start and shutdown ordering
-- **user**. Sudo to this USER or USER:GROUP right before exec supervised command.
-- **directory**. Jump to this path and exec supervised command there.
-- **stopasgroup**. Also stop this program when stopping group of programs where this program is listed.
-- **killasgroup**. Also kill this program when stopping group of programs where this program is listed.
-- **restartpause**. Wait (at least) this amount of seconds after stpping suprevised program before strt it again.
-- **restart_when_binary_changed**. Boolean value (false or true) to control if the supervised command should be restarted when its executable binary changes. Defaults to false.
-- **restart_cmd_when_binary_changed**. The command to restart the program if the program binary itself is changed.
-- **restart_signal_when_binary_changed**. The signal sent to the program for restarting if the program binary is changed.
-- **restart_directory_monitor**. Path to be monitored for restarting purpose.
-- **restart_file_pattern**. If a file changes under restart_directory_monitor and filename matches this pattern, the supervised command will be restarted.
-- **restart_cmd_when_file_changed**. The command to restart the program if any monitored files under **restart_directory_monitor** with pattern **restart_file_pattern** are changed.
-- **restart_signal_when_file_changed**. The signal will be sent to the proram, such as Nginx, for restarting if any monitored files under **restart_directory_monitor** with pattern **restart_file_pattern** are changed.
-- **depends_on**. Define supervised command start dependency. If program A depends on program B, C, the program B, C will be started before program A. Example:
+- **command**。要监督的命令。可以给出可执行文件的完整路径，也可以通过 PATH 变量计算。命令行参数也应该在此字符串中提供。
+- **process_name**。进程名称
+- **numprocs**。进程数量
+- **numprocs_start**。？？
+- **autostart**。是否在 supervisord 启动时运行被监督的命令？默认为 **true**。
+- **startsecs**。程序在启动后需要保持运行的总秒数，以认为启动成功（将进程从 STARTING 状态移动到 RUNNING 状态）。设置为 0 表示程序不需要保持运行任何特定时间。
+- **startretries**。supervisord 在尝试启动程序时允许的连续失败尝试次数，超过此次数后将放弃并将进程置于 FATAL 状态。有关 FATAL 状态的说明，请参见进程状态。
+- **autorestart**。如果被监督的命令死亡，是否自动重新运行。
+- **exitcodes**。与 autorestart 一起使用的程序的"预期"退出代码列表。如果 autorestart 参数设置为 unexpected，并且进程以除 supervisor stop 请求结果之外的任何方式退出，如果进程以未在此列表中定义的退出代码退出，supervisord 将重新启动进程。
+- **stopsignal**。发送给命令以优雅停止的信号。如果配置了多个 stopsignal，在停止程序时，supervisor 将按顺序向程序发送信号，间隔为 "stopwaitsecs"。如果程序在所有信号发送后仍未退出，supervisord 将终止程序。
+- **stopwaitsecs**。在向被监督的命令发送 SIGKILL 以使其不优雅地停止之前等待的时间。
+- **stdout_logfile**。被监督命令的 STDOUT 应该重定向到哪里。（特定值在本文档后面描述）。
+- **stdout_logfile_maxbytes**。超过此大小后将轮转日志。
+- **stdout_logfile_backups**。保留的轮转日志文件数量。
+- **redirect_stderr**。是否将 STDERR 重定向到 STDOUT。
+- **stderr_logfile**。被监督命令的 STDERR 应该重定向到哪里。（特定值在本文档后面描述）。
+- **stderr_logfile_maxbytes**。超过此大小后将轮转日志。
+- **stderr_logfile_backups**。保留的轮转日志文件数量。
+- **environment**。要传递给被监督程序的 VARIABLE=value 列表。它的优先级高于 `envFiles`。
+- **envFiles**。要加载并传递给被监督程序的 .env 文件列表。
+- **priority**。程序在启动和关闭顺序中的相对优先级
+- **user**。在执行被监督命令之前切换到该 USER 或 USER:GROUP。
+- **directory**。跳转到此路径并在那里执行被监督命令。
+- **stopasgroup**。在停止此程序所在的程序组时也停止此程序。
+- **killasgroup**。在停止此程序所在的程序组时也终止此程序。
+- **restartpause**。在停止被监督程序后等待（至少）这么多秒再重新启动它。
+- **restart_when_binary_changed**。布尔值（false 或 true），用于控制当被监督命令的可执行二进制文件更改时是否应该重新启动它。默认为 false。
+- **restart_cmd_when_binary_changed**。如果程序二进制文件本身发生变化，用于重新启动程序的命令。
+- **restart_signal_when_binary_changed**。如果程序二进制文件发生变化，用于重新启动程序的信号。
+- **restart_directory_monitor**。用于重新启动目的的监控路径。
+- **restart_file_pattern**。如果在 restart_directory_monitor 下的文件发生变化且文件名匹配此模式，将重新启动被监督命令。
+- **restart_cmd_when_file_changed**。如果在 **restart_directory_monitor** 下使用模式 **restart_file_pattern** 监控的任何文件发生变化，用于重新启动程序的命令。
+- **restart_signal_when_file_changed**。如果在 **restart_directory_monitor** 下使用模式 **restart_file_pattern** 监控的任何文件发生变化，将发送给程序（如 Nginx）用于重新启动的信号。
+- **depends_on**。定义被监督命令的启动依赖关系。如果程序 A 依赖于程序 B、C，则程序 B、C 将在程序 A 之前启动。示例：
 
 ```ini
 [program:A]
@@ -163,11 +162,11 @@ depends_on = B, C
 ...
 ```
 
-## Set default parameters for all supervised programs
+## 为所有被监督程序设置默认参数
 
-All common parameters that are identical for all supervised programs can be defined once in "program-default" section and omitted in all other program sections.
+所有被监督程序共有的相同参数可以在 "program-default" 部分定义一次，并在所有其他程序部分中省略。
 
-In example below the VAR1 and VAR2 environment variables apply to both test1 and test2 supervised programs:
+在下面的示例中，VAR1 和 VAR2 环境变量适用于 test1 和 test2 被监督程序：
 
 ```ini
 [program-default]
@@ -182,58 +181,57 @@ envFiles=global.env,prod.env
 
 ```
 
-## Group
+## 组
 
-Section "group" is supported and you can set "programs" item
+支持 "group" 部分，你可以设置 "programs" 项
 
-## Events
+## 事件
 
-Supervisord 3.x defined events are supported partially. Now it supports following events:
+部分支持 Supervisord 3.x 定义的事件。现在支持以下事件：
 
-- all process state related events
-- process communication event
-- remote communication event
-- tick related events
-- process log related events
+- 所有进程状态相关事件
+- 进程通信事件
+- 远程通信事件
+- tick 相关事件
+- 进程日志相关事件
 
-## Logs
+## 日志
 
-Supervisord can redirect stdout and stderr ( fields stdout_logfile, stderr_logfile ) of supervised programs to:
+Supervisord 可以将被监督程序的 stdout 和 stderr（字段 stdout_logfile、stderr_logfile）重定向到：
 
-- **/dev/null**. Ignore the log - send it to /dev/null.
-- **/dev/stdout**. Write log to STDOUT.
-- **/dev/stderr**. Write log to STDERR.
-- **syslog**. Send the log to local syslog service.
-- **syslog @[protocol:]host[:port]**. Send log events to remote syslog server. Protocol must be "tcp" or "udp", if missing, "udp" assumed. If port is missing, for "udp" protocol, it's defaults to 514 and for "tcp" protocol, it's value is 6514.
-- **file name**. Write log to specified file.
+- **/dev/null**。忽略日志 - 发送到 /dev/null。
+- **/dev/stdout**。将日志写入 STDOUT。
+- **/dev/stderr**。将日志写入 STDERR。
+- **syslog**。将日志发送到本地 syslog 服务。
+- **syslog @[protocol:]host[:port]**。将日志事件发送到远程 syslog 服务器。协议必须是 "tcp" 或 "udp"，如果缺失，则假定为 "udp"。如果端口缺失，对于 "udp" 协议，默认为 514，对于 "tcp" 协议，值为 6514。
+- **file name**。将日志写入指定文件。
 
-Multiple log files can be configured for the stdout_logfile and stderr_logfile with ',' as delimiter. For example:
+可以为 stdout_logfile 和 stderr_logfile 配置多个日志文件，使用 ',' 作为分隔符。例如：
 
 ```ini
 stdout_logfile = test.log, /dev/stdout
 ```
 
-### syslog settings
+### syslog 设置
 
-if write the log to the syslog, following additional parameter can be set like:
+如果将日志写入 syslog，可以设置以下附加参数：
 ```ini
 syslog_facility=local0
 syslog_tag=test
 syslog_stdout_priority=info
 syslog_stderr_priority=err
 ```
-- **syslog_facility**, can be one of(case insensitive): KERNEL, USER, MAIL, DAEMON, AUTH, SYSLOG, LPR, NEWS, UUCP, CRON, AUTHPRIV, FTP, LOCAL0~LOCAL7
-- **syslog_stdout_priority**, can be one of(case insensitive): EMERG, ALERT, CRIT, ERR, WARN, NOTICE, INFO, DEBUG
-- **syslog_stderr_priority**, can be one of(case insensitive): EMERG, ALERT, CRIT, ERR, WARN, NOTICE, INFO, DEBUG
-
+- **syslog_facility**，可以是以下之一（不区分大小写）：KERNEL、USER、MAIL、DAEMON、AUTH、SYSLOG、LPR、NEWS、UUCP、CRON、AUTHPRIV、FTP、LOCAL0~LOCAL7
+- **syslog_stdout_priority**，可以是以下之一（不区分大小写）：EMERG、ALERT、CRIT、ERR、WARN、NOTICE、INFO、DEBUG
+- **syslog_stderr_priority**，可以是以下之一（不区分大小写）：EMERG、ALERT、CRIT、ERR、WARN、NOTICE、INFO、DEBUG
 
 # Web GUI
 
-Supervisord has builtin web GUI: you can start, stop & check the status of program from the GUI. Following picture shows the default web GUI:
+Supervisord 有内置的 Web GUI：你可以从 GUI 中启动、停止和检查程序状态。下图显示了默认的 Web GUI：
 
 ![alt text](https://github.com/ochinchina/supervisord/blob/master/go_supervisord_gui.png)
 
-Please note that in order to see|use Web GUI you should configure it in /etc/supervisord.conf both in [inet_http_server] (and|or [unix_http_server] if you prefer unix domain socket) and [supervisorctl]:
+请注意，要查看|使用 Web GUI，你应该在 /etc/supervisord.conf 中配置它，包括 [inet_http_server]（和|或 [unix_http_server]，如果你更喜欢 Unix 域套接字）和 [supervisorctl]：
 
 ```ini
 [inet_http_server]
@@ -245,9 +243,9 @@ port=127.0.0.1:9001
 serverurl=http://127.0.0.1:9001
 ```
 
-# Usage from a Docker container
+# 在 Docker 容器中使用
 
-supervisord is compiled inside a Docker image to be used directly inside another image, from the Docker Hub version.
+supervisord 在 Docker 镜像中编译，可以直接在另一个镜像中使用，从 Docker Hub 版本。
 
 ```Dockerfile
 FROM debian:latest
@@ -255,69 +253,68 @@ COPY --from=ochinchina/supervisord:latest /usr/local/bin/supervisord /usr/local/
 CMD ["/usr/local/bin/supervisord"]
 ```
 
-# Integrate with Prometheus
+# 与 Prometheus 集成
 
-The Prometheus node exporter supported supervisord metrics are now integrated into the supervisor. So there is no need to deploy an extra node_exporter to collect the supervisord metrics. To collect the metrics, the port parameter in section "inet_http_server" must be configured and the metrics server is started on the path /metrics of the supervisor http server.
+Prometheus node exporter 支持的 supervisord 指标现在已集成到 supervisor 中。因此，不需要部署额外的 node_exporter 来收集 supervisord 指标。要收集指标，必须在 "inet_http_server" 部分配置 port 参数，指标服务器在 supervisor http 服务器的 /metrics 路径上启动。
 
-For example, if the port parameter in "inet_http_server" is "127.0.0.1:9001" and then the metrics server should be accessed in url "http://127.0.0.1:9001/metrics" 
+例如，如果 "inet_http_server" 中的 port 参数是 "127.0.0.1:9001"，那么应该通过 URL "http://127.0.0.1:9001/metrics" 访问指标服务器
 
+# 注册服务
 
-# Register service
-
-Autostart supervisord after os started. Look up supported platforms at [kardianos/service](https://github.com/kardianos/service).
+在操作系统启动后自动启动 supervisord。查看 [kardianos/service](https://github.com/kardianos/service) 支持的平台。
 
 ```Shell
-# install
+# 安装
 sudo supervisord service install -c full_path_to_conf_file
-# uninstall
+# 卸载
 sudo supervisord service uninstall
-# start
+# 启动
 supervisord service start
-# stop
+# 停止
 supervisord service stop
-```
+``` 
 
-# Using Nacos Configuration
+# 使用Nacos配置
 
-Supervisord supports fetching configuration from Nacos configuration center, making it easier to manage configurations in distributed environments.
+Supervisord支持从Nacos配置中心获取配置，这使得在分布式环境中管理配置变得更加简单。
 
-## Command Line Parameters
+## 命令行参数
 
-Use the following command line parameters to specify Nacos configuration:
+使用以下命令行参数来指定Nacos配置：
 
 ```shell
 supervisord --nacos-server=127.0.0.1:8848 --nacos-dataid=supervisord.conf --nacos-namespace=public --nacos-group=DEFAULT_GROUP --nacos-username=nacos --nacos-password=nacos --nacos-not-use-cache
 ```
 
-Parameter descriptions:
-- `--nacos-server`: Nacos server address in the format `IP:PORT`
-- `--nacos-dataid`: Nacos configuration ID
-- `--nacos-namespace`: Nacos namespace ID (optional)
-- `--nacos-group`: Nacos configuration group, defaults to `DEFAULT_GROUP` (optional)
-- `--nacos-username`: Nacos username (optional)
-- `--nacos-password`: Nacos password (optional)
-- `--nacos-not-use-cache`: Do not use local cache, fetch the latest configuration directly from Nacos server (optional)
+参数说明：
+- `--nacos-server`：Nacos服务器地址，格式为`IP:PORT`
+- `--nacos-dataid`：Nacos配置ID
+- `--nacos-namespace`：Nacos命名空间ID（可选）
+- `--nacos-group`：Nacos配置分组，默认为`DEFAULT_GROUP`（可选）
+- `--nacos-username`：Nacos用户名（可选）
+- `--nacos-password`：Nacos密码（可选）
+- `--nacos-not-use-cache`：不使用本地缓存，直接从Nacos服务器获取最新配置（可选）
 
-## Web Interface Configuration
+## Web界面配置
 
-You can also configure Nacos through the web interface:
+也可以通过Web界面配置Nacos：
 
-1. Start supervisord (using a local configuration file)
-2. Access the web interface: http://localhost:9001/
-3. Click the "Nacos Configuration" button
-4. Fill in the Nacos server address, configuration ID, etc.
-5. Check the "Do not use cache" option (if needed)
-6. Click the "Save Configuration" button
-7. Restart supervisord to use the Nacos configuration
+1. 启动supervisord（使用本地配置文件）
+2. 访问Web界面：http://localhost:9001/
+3. 点击"Nacos配置"按钮
+4. 填写Nacos服务器地址、配置ID等信息
+5. 勾选"不使用缓存"选项（如果需要）
+6. 点击"保存配置"按钮
+7. 重启supervisord以使用Nacos配置
 
-## Cache Control
+## 缓存控制
 
-The `--nacos-not-use-cache` parameter (or "Do not use cache" option in the web interface) controls whether the Nacos client uses local cache:
+`--nacos-not-use-cache`参数（或Web界面中的"不使用缓存"选项）可以控制Nacos客户端是否使用本地缓存：
 
-- When this option is enabled, the Nacos client will not load cached configuration at startup, but will fetch the latest configuration directly from the server. This is useful for ensuring you always use the latest configuration, especially in environments where configurations change frequently.
+- 当启用此选项时，Nacos客户端将不会在启动时加载本地缓存的配置，而是直接从服务器获取最新配置。这对于确保始终使用最新配置非常有用，特别是在配置频繁变更的环境中。
 
-- When this option is not enabled, the Nacos client will attempt to load cached configuration at startup, which can improve startup speed and provide some fault tolerance when the Nacos server is temporarily unavailable.
+- 当不启用此选项时，Nacos客户端会在启动时尝试加载本地缓存的配置，这可以提高启动速度，并在Nacos服务器暂时不可用时提供一定的容错能力。
 
-## Configuration Management
+## 配置管理
 
-When using Nacos configuration, you can add, modify, delete, and copy programs directly through the web interface, and these operations will directly modify the configuration in Nacos. This makes it easier to manage supervisord configurations in distributed environments.
+使用Nacos配置时，可以通过Web界面直接添加、修改、删除和复制程序，这些操作会直接修改Nacos中的配置。这使得在分布式环境中管理supervisord配置变得更加简单和一致。
