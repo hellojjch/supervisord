@@ -13,3 +13,4 @@ dist
 log
 *.log
 logs
+nacos_tmp
