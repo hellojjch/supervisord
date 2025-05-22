@@ -229,7 +229,7 @@ syslog_stderr_priority=err
 
 Supervisord 有内置的 Web GUI：你可以从 GUI 中启动、停止和检查程序状态。下图显示了默认的 Web GUI：
 
-![alt text](https://github.com/ochinchina/supervisord/blob/master/go_supervisord_gui.png)
+![alt text](https://github.com/hellojjch/supervisord/blob/master/go_supervisord_gui.png)
 
 请注意，要查看|使用 Web GUI，你应该在 /etc/supervisord.conf 中配置它，包括 [inet_http_server]（和|或 [unix_http_server]，如果你更喜欢 Unix 域套接字）和 [supervisorctl]：
 
