@@ -96,6 +96,19 @@ func NewSupervisor(configFile string) *Supervisor {
 		restarting: false}
 }
 
+// NewSupervisorWithNacos create a Supervisor object with nacos configuration
+func NewSupervisorWithNacos(nacosConfig config.NacosConfig) (*Supervisor, error) {
+	cfg, err := config.NewConfigWithNacos(nacosConfig)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &Supervisor{config: cfg,
+		procMgr:    process.NewManager(),
+		xmlRPC:     NewXMLRPC(),
+		restarting: false}, nil
+}
+
 // GetConfig get the loaded supervisor configuration
 func (s *Supervisor) GetConfig() *config.Config {
 	return s.config
@@ -195,7 +208,9 @@ func (s *Supervisor) IsRestarting() bool {
 }
 
 func getProcessInfo(proc *process.Process) *types.ProcessInfo {
-	return &types.ProcessInfo{Name: proc.GetName(),
+	config := proc.GetConfig()
+	return &types.ProcessInfo{
+		Name:          proc.GetName(),
 		Group:         proc.GetGroup(),
 		Description:   proc.GetDescription(),
 		Start:         int(proc.GetStartTime().Unix()),
@@ -208,8 +223,16 @@ func getProcessInfo(proc *process.Process) *types.ProcessInfo {
 		Logfile:       proc.GetStdoutLogfile(),
 		StdoutLogfile: proc.GetStdoutLogfile(),
 		StderrLogfile: proc.GetStderrLogfile(),
-		Pid:           proc.GetPid()}
-
+		Pid:           proc.GetPid(),
+		Command:       config.GetString("command", ""),
+		ProcessName:   config.GetString("process_name", "%(program_name)s_%(process_num)02d"),
+		NumProcs:      config.GetInt("numprocs", 1),
+		Environment:   config.GetString("environment", ""),
+		Directory:     config.GetString("directory", ""),
+		User:          config.GetString("user", ""),
+		Autostart:     config.GetString("autostart", "true") == "true",
+		Autorestart:   config.GetString("autorestart", "unexpected") != "false",
+	}
 }
 
 // GetAllProcessInfo get all the program information managed by supervisor

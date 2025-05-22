@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go-Supervisor 日志查看</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/bootstrap-table.css"/>
+    <link rel="stylesheet" href="css/bootstrap-dialog.min.css"/>
+    <script src="js/axios.min.js"></script>
+    <script src='js/jquery-3.3.1.min.js'></script>
+    <script src='js/popper.min.js'></script>
+    <script src='js/bootstrap.min.js'></script>
+    <script src="js/common.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-weight: 300;
+            font-size: 2.2rem;
+        }
+        
+        .header .logo {
+            height: 40px;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+        
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .log-container {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .log-container::-webkit-scrollbar-track {
+            background: #34495e;
+            border-radius: 4px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb {
+            background: #7f8c8d;
+            border-radius: 4px;
+        }
+        
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: #95a5a6;
+        }
+        
+        .log-file-link {
+            display: block;
+            padding: 10px 15px;
+            margin-bottom: 5px;
+            background-color: white;
+            border-radius: 5px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .log-file-link:hover {
+            background-color: #f8f9fa;
+            color: #2980b9;
+            text-decoration: none;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .log-file-link i {
+            margin-right: 10px;
+        }
+        
+        .log-file-link .file-size {
+            float: right;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .log-file-link .file-date {
+            display: block;
+            font-size: 0.8em;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+        
+        .breadcrumb {
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .breadcrumb-item a {
+            color: var(--primary-color);
+        }
+        
+        .breadcrumb-item.active {
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+        
+        .log-actions {
+            margin-bottom: 20px;
+        }
+        
+        .log-actions .btn {
+            margin-right: 10px;
+        }
+        
+        .log-empty {
+            text-align: center;
+            padding: 50px 0;
+            color: #7f8c8d;
+        }
+        
+        .log-empty i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #bdc3c7;
+        }
+        
+        .log-empty h3 {
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+        
+        .back-to-dashboard {
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .log-actions .btn {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <h1><i class="fas fa-file-alt logo"></i> Go-Supervisor 日志查看</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="back-to-dashboard">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> 返回控制面板
+            </a>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-folder-open"></i> <span id="program-name">程序日志</span>
+                    </div>
+                    <div class="log-actions">
+                        <button id="refresh-btn" class="btn btn-sm btn-primary">
+                            <i class="fas fa-sync"></i> 刷新
+                        </button>
+                        <button id="download-btn" class="btn btn-sm btn-success">
+                            <i class="fas fa-download"></i> 下载
+                        </button>
+                        <button id="clear-btn" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i> 清空
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb" id="log-breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">首页</a></li>
+                        <li class="breadcrumb-item active">日志</li>
+                    </ol>
+                </nav>
+                
+                <div id="app">
+                    <!-- 日志内容将在这里显示 -->
+                    <div class="log-empty">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>正在加载日志...</h3>
+                        <p>请稍候，正在获取日志数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认对话框 Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">确认操作</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirm-message">确认信息</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirm-action-btn">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 加载 Font Awesome
+        $(document).ready(function() {
+            $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />');
+            
+            let name = getUrlVars()["name"];
+            if (name) {
+                $("#program-name").text(name + " 的日志");
+                getLogDir(name);
+                
+                // 更新面包屑
+                $("#log-breadcrumb").html(`
+                    <li class="breadcrumb-item"><a href="/">首页</a></li>
+                    <li class="breadcrumb-item active">${name} 日志</li>
+                `);
+                
+                // 刷新按钮事件
+                $("#refresh-btn").click(function() {
+                    getLogDir(name);
+                });
+                
+                // 清空按钮事件
+                $("#clear-btn").click(function() {
+                    showConfirmDialog(
+                        "清空日志确认", 
+                        `确定要清空 ${name} 的所有日志吗？此操作不可恢复。`, 
+                        function() {
+                            clearLogs(name);
+                        }
+                    );
+                });
+                
+                // 下载按钮事件
+                $("#download-btn").click(function() {
+                    // 这里可以实现下载功能，如果后端支持的话
+                    alert("下载功能尚未实现");
+                });
+            } else {
+                $("#app").html(`
+                    <div class="log-empty">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>参数错误</h3>
+                        <p>需要URL参数name来指定要查看的程序</p>
+                    </div>
+                `);
+            }
+        });
+
+        function getLogDir(name) {
+            if (name === undefined || name.length === 0) {
+                $("#app").html(`
+                    <div class="log-empty">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>参数错误</h3>
+                        <p>需要URL参数name来指定要查看的程序</p>
+                    </div>
+                `);
+                return;
+            }
+
+            // 显示加载中
+            $("#app").html(`
+                <div class="log-empty">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>正在加载日志...</h3>
+                    <p>请稍候，正在获取日志数据</p>
+                </div>
+            `);
+
+            axios.get("/log/" + name).then(function (response) {
+                let content = response.data;
+                
+                // 检查是否是目录列表
+                if (content.includes("<a href=")) {
+                    // 格式化目录列表，使其更美观
+                    let formattedContent = formatDirectoryListing(content, name);
+                    $("#app").html(formattedContent);
+                } else {
+                    // 如果是日志内容，显示在预格式化的容器中
+                    $("#app").html(`<div class="log-container">${escapeHtml(content)}</div>`);
+                }
+            }).catch(function (err) {
+                $("#app").html(`
+                    <div class="log-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>加载失败</h3>
+                        <p>错误：此程序未配置日志，如需配置请参考stdout_logfile参数</p>
+                    </div>
+                `);
+            });
+        }
+        
+        function formatDirectoryListing(content, programName) {
+            // 解析HTML内容以提取链接
+            let tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            let links = tempDiv.getElementsByTagName('a');
+            
+            if (links.length === 0) {
+                return `
+                    <div class="log-empty">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>目录为空</h3>
+                        <p>没有找到任何日志文件</p>
+                    </div>
+                `;
+            }
+            
+            let formattedHtml = '';
+            
+            for (let i = 0; i < links.length; i++) {
+                let link = links[i];
+                let href = link.getAttribute('href');
+                let fileName = link.textContent;
+                
+                // 跳过父目录链接
+                if (fileName === '../') continue;
+                
+                // 为不同类型的文件使用不同的图标
+                let icon = 'fas fa-file-alt';
+                if (fileName.endsWith('/')) {
+                    icon = 'fas fa-folder';
+                } else if (fileName.endsWith('.log')) {
+                    icon = 'fas fa-file-alt';
+                }
+                
+                // 创建美观的链接卡片
+                formattedHtml += `
+                    <a href="/log/${programName}/${href}" class="log-file-link">
+                        <i class="${icon}"></i> ${fileName}
+                        <span class="file-date">最后修改: 今天 12:34</span>
+                    </a>
+                `;
+            }
+            
+            return formattedHtml;
+        }
+        
+        function clearLogs(name) {
+            axios.post("/log/clear/" + name).then(function (response) {
+                if (response.data && response.data.success) {
+                    showToast("成功", `${name} 的日志已清空`, "success");
+                    getLogDir(name); // 刷新显示
+                } else {
+                    showToast("错误", "清空日志失败", "danger");
+                }
+            }).catch(function (err) {
+                showToast("错误", "清空日志请求失败", "danger");
+            });
+        }
+        
+        function showConfirmDialog(title, message, confirmCallback) {
+            $("#confirmModalLabel").text(title);
+            $("#confirm-message").text(message);
+            $("#confirm-action-btn").off('click').on('click', function() {
+                confirmCallback();
+                $("#confirmModal").modal('hide');
+            });
+            $("#confirmModal").modal('show');
+        }
+        
+        function showToast(title, message, type) {
+            // 创建toast元素
+            let toastHtml = `
+                <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000" style="position: absolute; top: 20px; right: 20px; min-width: 300px;">
+                    <div class="toast-header bg-${type} text-white">
+                        <strong class="mr-auto">${title}</strong>
+                        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            // 添加到页面并显示
+            $("body").append(toastHtml);
+            $('.toast').toast('show');
+            
+            // 自动移除
+            $('.toast').on('hidden.bs.toast', function() {
+                $(this).remove();
+            });
+        }
+        
+        // 辅助函数：HTML转义
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

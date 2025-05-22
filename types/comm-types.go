@@ -20,6 +20,14 @@ type ProcessInfo struct {
 	StdoutLogfile string `xml:"stdout_logfile" json:"stdout_logfile"`
 	StderrLogfile string `xml:"stderr_logfile" json:"stderr_logfile"`
 	Pid           int    `xml:"pid" json:"pid"`
+	Command       string `xml:"command" json:"command"`
+	ProcessName   string `xml:"process_name" json:"process_name"`
+	NumProcs      int    `xml:"numprocs" json:"numprocs"`
+	Environment   string `xml:"environment" json:"environment"`
+	Directory     string `xml:"directory" json:"directory"`
+	User          string `xml:"user" json:"user"`
+	Autostart     bool   `xml:"autostart" json:"autostart"`
+	Autorestart   bool   `xml:"autorestart" json:"autorestart"`
 }
 
 // ReloadConfigResult the result of supervisor configuration reloading

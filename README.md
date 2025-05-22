@@ -277,3 +277,47 @@ supervisord service start
 supervisord service stop
 ```
 
+# Using Nacos Configuration
+
+Supervisord supports fetching configuration from Nacos configuration center, making it easier to manage configurations in distributed environments.
+
+## Command Line Parameters
+
+Use the following command line parameters to specify Nacos configuration:
+
+```shell
+supervisord --nacos-server=127.0.0.1:8848 --nacos-dataid=supervisord.conf --nacos-namespace=public --nacos-group=DEFAULT_GROUP --nacos-username=nacos --nacos-password=nacos --nacos-not-use-cache
+```
+
+Parameter descriptions:
+- `--nacos-server`: Nacos server address in the format `IP:PORT`
+- `--nacos-dataid`: Nacos configuration ID
+- `--nacos-namespace`: Nacos namespace ID (optional)
+- `--nacos-group`: Nacos configuration group, defaults to `DEFAULT_GROUP` (optional)
+- `--nacos-username`: Nacos username (optional)
+- `--nacos-password`: Nacos password (optional)
+- `--nacos-not-use-cache`: Do not use local cache, fetch the latest configuration directly from Nacos server (optional)
+
+## Web Interface Configuration
+
+You can also configure Nacos through the web interface:
+
+1. Start supervisord (using a local configuration file)
+2. Access the web interface: http://localhost:9001/
+3. Click the "Nacos Configuration" button
+4. Fill in the Nacos server address, configuration ID, etc.
+5. Check the "Do not use cache" option (if needed)
+6. Click the "Save Configuration" button
+7. Restart supervisord to use the Nacos configuration
+
+## Cache Control
+
+The `--nacos-not-use-cache` parameter (or "Do not use cache" option in the web interface) controls whether the Nacos client uses local cache:
+
+- When this option is enabled, the Nacos client will not load cached configuration at startup, but will fetch the latest configuration directly from the server. This is useful for ensuring you always use the latest configuration, especially in environments where configurations change frequently.
+
+- When this option is not enabled, the Nacos client will attempt to load cached configuration at startup, which can improve startup speed and provide some fault tolerance when the Nacos server is temporarily unavailable.
+
+## Configuration Management
+
+When using Nacos configuration, you can add, modify, delete, and copy programs directly through the web interface, and these operations will directly modify the configuration in Nacos. This makes it easier to manage supervisord configurations in distributed environments.

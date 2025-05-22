@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <title>Go-Supervisor Nacos配置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/bootstrap-table.css"/>
+    <link rel="stylesheet" href="css/bootstrap-dialog.min.css"/>
+    <script src='js/jquery-3.3.1.min.js'></script>
+    <script src='js/popper.min.js'></script>
+    <script src='js/bootstrap.min.js'></script>
+    <script src='js/bootstrap-table.min.js'></script>
+    <script src='js/bootstrap-dialog.min.js'></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --info-color: #17a2b8;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-weight: 300;
+            font-size: 2.2rem;
+        }
+        
+        .header .logo {
+            height: 40px;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+        
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #e9ecef;
+            margin: 15px 0;
+        }
+        
+        .management-buttons {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 768px) {
+            .management-buttons .btn {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<script type="text/javascript">
+    // 显示提示消息
+    function showToast(title, message, type) {
+        var toastHtml = '<div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">' +
+            '<div class="toast-header bg-' + type + ' text-white">' +
+            '<strong class="mr-auto">' + title + '</strong>' +
+            '<button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">' +
+            '<span aria-hidden="true">&times;</span>' +
+            '</button>' +
+            '</div>' +
+            '<div class="toast-body">' + message + '</div>' +
+            '</div>';
+            
+        $('#toast-container').append(toastHtml);
+        $('.toast').toast('show');
+        
+        // 自动移除已关闭的 toast
+        $('.toast').on('hidden.bs.toast', function () {
+            $(this).remove();
+        });
+    }
+    
+    // 确认对话框
+    function confirm_dialog(confirm) {
+        $('#my-modal-title').text(confirm['title']);
+        $('#my-modal-message').text(confirm['message']);
+        $('#my-modal-cancel-btn').text(confirm['cancel-text']);
+        $('#my-modal-confirm-btn').text(confirm['confirm-text']);
+        $('#my-modal-confirm-btn').unbind('click');
+        if (confirm.hasOwnProperty('cancel-hide') && confirm['cancel-hide']) {
+            $('#my-modal-cancel-btn').hide();
+        } else {
+            $('#my-modal-cancel-btn').show();
+        }
+        $('#my-modal-confirm-btn').click(confirm['confirm-onclick']);
+        $("#myModal").modal('show');
+    }
+    
+    // 保存Nacos配置
+    function saveNacosConfig() {
+        var nacosConfig = {
+            serverAddr: $('#nacos-server').val(),
+            namespace: $('#nacos-namespace').val(),
+            group: $('#nacos-group').val(),
+            dataId: $('#nacos-dataid').val(),
+            username: $('#nacos-username').val(),
+            password: $('#nacos-password').val(),
+            not_use_cache: $('#nacos-not-use-cache').is(':checked')
+        };
+        
+        // 验证必填字段
+        if (!nacosConfig.serverAddr || !nacosConfig.dataId) {
+            showToast("错误", "服务器地址和配置ID不能为空", "danger");
+            return;
+        }
+        
+        // 发送请求保存配置
+        $.ajax({
+            type: "POST",
+            url: "/supervisor/nacos/config",
+            contentType: "application/json",
+            data: JSON.stringify(nacosConfig),
+            success: function(data, status, jqXHR) {
+                showToast("成功", "Nacos配置已保存", "success");
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "保存Nacos配置失败: " + (jqXHR.responseJSON ? jqXHR.responseJSON.message : "未知错误"), "danger");
+            }
+        });
+    }
+    
+    // 测试Nacos连接
+    function testNacosConnection() {
+        var nacosConfig = {
+            serverAddr: $('#nacos-server').val(),
+            namespace: $('#nacos-namespace').val(),
+            group: $('#nacos-group').val(),
+            dataId: $('#nacos-dataid').val(),
+            username: $('#nacos-username').val(),
+            password: $('#nacos-password').val(),
+            not_use_cache: $('#nacos-not-use-cache').is(':checked')
+        };
+        
+        // 验证必填字段
+        if (!nacosConfig.serverAddr || !nacosConfig.dataId) {
+            showToast("错误", "服务器地址和配置ID不能为空", "danger");
+            return;
+        }
+        
+        // 发送请求测试连接
+        $.ajax({
+            type: "POST",
+            url: "/supervisor/nacos/test",
+            contentType: "application/json",
+            data: JSON.stringify(nacosConfig),
+            success: function(data, status, jqXHR) {
+                showToast("成功", "Nacos连接测试成功", "success");
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "Nacos连接测试失败: " + (jqXHR.responseJSON ? jqXHR.responseJSON.message : "未知错误"), "danger");
+            }
+        });
+    }
+    
+    // 获取当前Nacos配置
+    function getNacosConfig() {
+        $.ajax({
+            type: "GET",
+            url: "/supervisor/nacos/config",
+            success: function(data, status, jqXHR) {
+                $('#nacos-server').val(data.serverAddr || "");
+                $('#nacos-namespace').val(data.namespace || "");
+                $('#nacos-group').val(data.group || "DEFAULT_GROUP");
+                $('#nacos-dataid').val(data.dataId || "");
+                $('#nacos-username').val(data.username || "");
+                $('#nacos-password').val(data.password || "");
+                $('#nacos-not-use-cache').prop('checked', data.not_use_cache || false);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("警告", "获取Nacos配置失败，使用默认配置", "warning");
+            }
+        });
+    }
+    
+    $(document).ready(function() {
+        // 加载 Font Awesome
+        $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />');
+        
+        // 获取当前Nacos配置
+        getNacosConfig();
+    });
+</script>
+
+<body>
+    <div class="header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <h1><i class="fas fa-tasks logo"></i> Go-Supervisor Nacos配置</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-cogs"></i> Nacos配置
+            </div>
+            <div class="card-body">
+                <form id="nacos-form">
+                    <div class="form-group">
+                        <label for="nacos-server">服务器地址 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nacos-server" placeholder="例如: 127.0.0.1:8848" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nacos-namespace">命名空间ID</label>
+                        <input type="text" class="form-control" id="nacos-namespace" placeholder="命名空间ID，默认为空">
+                    </div>
+                    <div class="form-group">
+                        <label for="nacos-group">配置分组</label>
+                        <input type="text" class="form-control" id="nacos-group" placeholder="配置分组，默认为DEFAULT_GROUP" value="DEFAULT_GROUP">
+                    </div>
+                    <div class="form-group">
+                        <label for="nacos-dataid">配置ID <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nacos-dataid" placeholder="配置ID，例如: supervisord.conf" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nacos-username">用户名</label>
+                        <input type="text" class="form-control" id="nacos-username" placeholder="用户名，如果需要认证">
+                    </div>
+                    <div class="form-group">
+                        <label for="nacos-password">密码</label>
+                        <input type="password" class="form-control" id="nacos-password" placeholder="密码，如果需要认证">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="nacos-not-use-cache">
+                            <label class="form-check-label" for="nacos-not-use-cache">不使用缓存</label>
+                        </div>
+                    </div>
+                    
+                    <div class="management-buttons">
+                        <button type="button" class="btn btn-primary" onclick="saveNacosConfig();">
+                            <i class="fas fa-save"></i> 保存配置
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="testNacosConnection();">
+                            <i class="fas fa-plug"></i> 测试连接
+                        </button>
+                        <a href="/" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回主页
+                        </a>
+                    </div>
+                </form>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 配置说明：
+                    <ul>
+                        <li>服务器地址：Nacos服务器的地址，格式为 IP:端口，例如 127.0.0.1:8848</li>
+                        <li>命名空间ID：Nacos的命名空间ID，如果不填写则使用默认命名空间</li>
+                        <li>配置分组：Nacos的配置分组，默认为 DEFAULT_GROUP</li>
+                        <li>配置ID：Nacos中的配置ID，用于标识supervisord的配置</li>
+                        <li>用户名和密码：如果Nacos启用了认证，则需要填写</li>
+                        <li>不使用缓存：勾选此选项后，Nacos客户端将不会在启动时加载本地缓存的配置，而是直接从服务器获取最新配置</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> 注意：保存配置后，需要重启supervisord才能生效。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div aria-live="polite" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; min-width: 300px; z-index: 9999">
+        <div id="toast-container" style="position: absolute; top: 0; right: 0;"></div>
+    </div>
+
+    <!-- 确认对话框 Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="my-modal-title">确认</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="my-modal-message">确认信息</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="my-modal-cancel-btn" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="my-modal-confirm-btn">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

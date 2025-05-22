@@ -89,7 +89,7 @@ func (c *Entry) String() string {
 
 // Config memory representation of supervisor configuration file
 type Config struct {
-	configFile string
+	provider ConfigProvider
 	// mapping between the section name and configuration entry
 	entries map[string]*Entry
 
@@ -101,9 +101,23 @@ func NewEntry(configDir string) *Entry {
 	return &Entry{configDir, "", "", make(map[string]string)}
 }
 
-// NewConfig creates Config object
+// NewConfig creates Config object with file provider
 func NewConfig(configFile string) *Config {
-	return &Config{configFile, make(map[string]*Entry), NewProcessGroup()}
+	return &Config{NewFileConfigProvider(configFile), make(map[string]*Entry), NewProcessGroup()}
+}
+
+// NewConfigWithProvider creates Config object with custom provider
+func NewConfigWithProvider(provider ConfigProvider) *Config {
+	return &Config{provider, make(map[string]*Entry), NewProcessGroup()}
+}
+
+// NewConfigWithNacos creates Config object with Nacos provider
+func NewConfigWithNacos(config NacosConfig) (*Config, error) {
+	provider, err := NewNacosConfigProvider(config)
+	if err != nil {
+		return nil, err
+	}
+	return &Config{provider, make(map[string]*Entry), NewProcessGroup()}, nil
 }
 
 // create a new entry or return the already-exist entry
@@ -120,11 +134,16 @@ func (c *Config) createEntry(name string, configDir string) *Entry {
 //
 // Load the configuration and return loaded programs
 func (c *Config) Load() ([]string, error) {
-	myini := ini.NewIni()
 	c.ProgramGroup = NewProcessGroup()
-	log.WithFields(log.Fields{"file": c.configFile}).Info("load configuration from file")
-	myini.LoadFile(c.configFile)
-
+	
+	// 从配置提供者获取配置
+	myini, err := c.provider.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	
+	log.WithFields(log.Fields{"provider": fmt.Sprintf("%T", c.provider)}).Info("load configuration")
+	
 	includeFiles := c.getIncludeFiles(myini)
 	for _, f := range includeFiles {
 		log.WithFields(log.Fields{"file": f}).Info("load configuration from file")
@@ -203,7 +222,7 @@ func (c *Config) setProgramDefaultParams(cfg *ini.Ini) {
 
 // GetConfigFileDir returns directory of supervisord configuration file
 func (c *Config) GetConfigFileDir() string {
-	return filepath.Dir(c.configFile)
+	return c.provider.GetConfigDir()
 }
 
 // convert supervisor file pattern to the go regrexp
@@ -659,4 +678,9 @@ func (c *Config) String() string {
 func (c *Config) RemoveProgram(programName string) {
 	delete(c.entries, programName)
 	c.ProgramGroup.Remove(programName)
+}
+
+// GetProvider returns the configuration provider
+func (c *Config) GetProvider() ConfigProvider {
+	return c.provider
 }

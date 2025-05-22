@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <title>Go-Supervisor 进程管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/bootstrap-table.css"/>
+    <link rel="stylesheet" href="css/bootstrap-dialog.min.css"/>
+    <script src='js/jquery-3.3.1.min.js'></script>
+    <script src='js/popper.min.js'></script>
+    <script src='js/bootstrap.min.js'></script>
+    <script src='js/bootstrap-table.min.js'></script>
+    <script src='js/bootstrap-dialog.min.js'></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --info-color: #17a2b8;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-weight: 300;
+            font-size: 2.2rem;
+        }
+        
+        .header .logo {
+            height: 40px;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+        
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+        
+        .btn-danger:hover, .btn-danger:focus {
+            background-color: #c0392b;
+            border-color: #c0392b;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+        
+        .btn-success:hover, .btn-success:focus {
+            background-color: #27ae60;
+            border-color: #27ae60;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            border-color: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-warning:hover, .btn-warning:focus {
+            background-color: #d35400;
+            border-color: #d35400;
+            color: white;
+        }
+        
+        .btn-info {
+            background-color: var(--info-color);
+            border-color: var(--info-color);
+            color: white;
+        }
+        
+        .btn-info:hover, .btn-info:focus {
+            background-color: #138496;
+            border-color: #138496;
+            color: white;
+        }
+        
+        .action-btn {
+            margin-right: 5px;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+        }
+        
+        .status-running {
+            background-color: var(--success-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-stopped {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-starting {
+            background-color: var(--warning-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .action-buttons {
+            margin-bottom: 20px;
+        }
+        
+        .action-buttons .btn {
+            margin-right: 10px;
+            padding: 8px 16px;
+            font-weight: 500;
+        }
+        
+        .log-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .log-link:hover {
+            text-decoration: underline;
+        }
+        
+        .modal-header {
+            background-color: var(--secondary-color);
+            color: white;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .refresh-info {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #e9ecef;
+            margin: 15px 0;
+        }
+        
+        .management-buttons {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        /* 进程实例样式 */
+        .process-instance {
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .process-instance:before {
+            content: "└─";
+            position: absolute;
+            left: 5px;
+            color: #6c757d;
+        }
+        
+        .process-group-header {
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons .btn, .management-buttons .btn {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<script type="text/javascript">
+    var columns = [{
+        field: 'group_name',
+        title: '程序组'
+    }, {
+        field: 'name',
+        title: '程序名称'
+    }, {
+        field: 'command',
+        title: '命令'
+    }, {
+        field: 'statename',
+        title: '状态'
+    }, {
+        field: 'description',
+        title: '描述'
+    }, {
+        field: 'action',
+        title: '操作'
+    }];
+
+    var programs = []
+
+    function changeProgramState(name, statename) {
+        for (var i = 0; i < programs.length; i++) {
+            if (name == programs[i]['name']) {
+                programs[i]['statename'] = statename;
+            }
+        }
+    }
+
+    function refreshDisplay() {
+        reformatPrograms(programs);
+        $("#programs").bootstrapTable('destroy');
+        $("#programs").bootstrapTable({
+            data: programs
+        });
+    }
+
+    function startProgram(name) {
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            url: "/program/start/" + name,
+            success: function (data, status, jqXHR) {
+                if (data['success']) {
+                    changeProgramState(name, "运行中");
+                    refreshDisplay();
+                    showToast("成功", "程序 " + name + " 已成功启动", "success");
+                } else {
+                    confirm_dialog({
+                        'title': "启动失败",
+                        'message': "启动程序失败，请检查 supervisord 日志以查找原因",
+                        'cancel-text': "取消",
+                        'cancel-hide': true,
+                        'confirm-text': "确定",
+                        'confirm-onclick': function () { }
+                    });
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                confirm_dialog({
+                    'title': "连接错误",
+                    'message': "启动程序失败，请检查 supervisord 是否已启动",
+                    'cancel-text': "取消",
+                    'cancel-hide': true,
+                    'confirm-text': "确定",
+                    'confirm-onclick': function () { }
+                });
+            }
+        });
+    };
+
+    function stopProgram(programName) {
+        return new Promise((resolve, reject) => {
+            confirm_dialog({
+                'title': "停止确认",
+                'message': "确定要停止程序 " + programName + " 吗？",
+                'cancel-text': "取消",
+                'confirm-text': "停止",
+                'confirm-onclick': async function () {
+                    // 关闭对话框
+                    $("#myModal").modal('hide');
+                    await doStopProgram(programName);
+                    resolve("success");
+                }
+            });
+        })
+    }
+
+    async function restartProgram(programName) {
+        await stopProgram(programName)
+        startProgram(programName)
+    }
+
+    function doStopProgram(name) {
+        return new Promise(
+            (resolve, reject) => {
+                $.ajax({
+                    type: "POST",
+                    dataType: "json",
+                    url: "/program/stop/" + name,
+                    success: function (data, status, jqXHR) {
+                        if (data['success']) {
+                            changeProgramState(name, '已停止');
+                            refreshDisplay();
+                            showToast("成功", "程序 " + name + " 已成功停止", "success");
+                        } else {
+                            confirm_dialog({
+                                'title': "停止失败",
+                                'message': "停止程序失败，请检查 supervisord 日志",
+                                'cancel-text': "取消",
+                                'cancel-hide': true,
+                                'confirm-text': "确定",
+                                'confirm-onclick': function () {
+                                }
+                            });
+                        }
+                        resolve("success")
+                    },
+                    error: function (jqXHR, status, errorThrown) {
+                        confirm_dialog({
+                            'title': "连接错误",
+                            'message': "停止程序失败，请检查 supervisord 是否正在运行",
+                            'cancel-text': "取消",
+                            'cancel-hide': true,
+                            'confirm-text': "确定",
+                            'confirm-onclick': function () {
+                            }
+                        });
+                        reject("err")
+                    }
+                });
+            })
+    }
+
+    function reformatPrograms(programs) {
+        // 创建一个映射，用于存储程序组信息
+        var programGroups = {};
+        var processedGroups = {};
+        var newPrograms = [];
+        
+        // 第一遍循环：识别程序组
+        for (var i in programs) {
+            var name = programs[i]['name'];
+            var baseName = name;
+            var isProcessInstance = false;
+            
+            // 检查是否是进程实例（名称格式为 program_name_01, program_name_02 等）
+            var match = name.match(/^(.+)_\d+$/);
+            if (match) {
+                baseName = match[1];
+                isProcessInstance = true;
+            }
+            
+            // 如果是进程实例，将其添加到程序组中
+            if (isProcessInstance) {
+                if (!programGroups[baseName]) {
+                    programGroups[baseName] = {
+                        instances: [],
+                        baseConfig: null
+                    };
+                }
+                programGroups[baseName].instances.push(programs[i]);
+            }
+        }
+        
+        // 第二遍循环：处理每个程序
+        for (var i in programs) {
+            var statename = programs[i]['statename'];
+            var action = "";
+            var statusClass = "";
+            var name = programs[i]['name'];
+            var baseName = name;
+            var isProcessInstance = false;
+            
+            // 检查是否是进程实例
+            var match = name.match(/^(.+)_\d+$/);
+            if (match) {
+                baseName = match[1];
+                isProcessInstance = true;
+            }
+            
+            if (statename.toLowerCase().indexOf("running") >= 0) {
+                statusClass = "status-running";
+                statename = "运行中";
+            } else if (statename.toLowerCase().indexOf("starting") >= 0) {
+                statusClass = "status-starting";
+                statename = "启动中";
+            } else {
+                statusClass = "status-stopped";
+                statename = "已停止";
+            }
+            
+            // 如果是进程实例，并且我们还没有处理过它的程序组
+            if (isProcessInstance && !processedGroups[baseName]) {
+                // 创建一个程序组行
+                var groupRow = JSON.parse(JSON.stringify(programs[i])); // 深拷贝
+                groupRow['name'] = '<span class="font-weight-bold">' + baseName + '</span>';
+                
+                // 获取该组的第一个进程实例名称
+                var firstInstanceName = programGroups[baseName].instances.length > 0 ? 
+                    programGroups[baseName].instances[0]['name'] : baseName;
+                
+                // 为程序组添加操作按钮（查看、修改、复制、删除）
+                var groupAction = '<button type="button" class="btn btn-info action-btn" onclick="viewProgram(\'' + firstInstanceName + '\');"><i class="fas fa-eye"></i> 查看</button>';
+                groupAction += '<button type="button" class="btn btn-primary action-btn" onclick="editProgram(\'' + firstInstanceName + '\');"><i class="fas fa-edit"></i> 修改</button>';
+                groupAction += '<button type="button" class="btn btn-success action-btn" onclick="copyProgram(\'' + firstInstanceName + '\');"><i class="fas fa-copy"></i> 复制</button>';
+                groupAction += '<button type="button" class="btn btn-danger action-btn" onclick="deleteProgram(\'' + firstInstanceName + '\');"><i class="fas fa-trash"></i> 删除</button>';
+                
+                groupRow['action'] = groupAction;
+                groupRow['group_name'] = '<span class="badge badge-primary">' + baseName + '</span>';
+                
+                // 添加程序组行
+                newPrograms.push(groupRow);
+                
+                // 标记这个程序组已经处理过
+                processedGroups[baseName] = true;
+            }
+            
+            // 为进程实例添加特殊标识
+            var displayName = name;
+            if (isProcessInstance) {
+                displayName = '<span class="process-instance" title="进程实例">' + name + ' <i class="fas fa-layer-group text-info"></i></span>';
+                
+                // 为进程实例添加操作按钮（只有启动、停止、重启和查看日志）
+                if (statename === "运行中" || statename === "启动中") {
+                    action = '<button type="button" disabled class="btn btn-success action-btn" onclick="startProgram(\'' + name + '\');"><i class="fas fa-play"></i> 启动</button>';
+                    action = action + '<button type="button" class="btn btn-danger action-btn" onclick="stopProgram(\'' + name + '\');"><i class="fas fa-stop"></i> 停止</button>';
+                    action = action + '<button type="button" class="btn btn-warning action-btn" onclick="restartProgram(\'' + name + '\');"><i class="fas fa-sync"></i> 重启</button>';
+                } else {
+                    action = '<button type="button" class="btn btn-success action-btn" onclick="startProgram(\'' + name + '\');"><i class="fas fa-play"></i> 启动</button>';
+                    action = action + '<button type="button" disabled class="btn btn-danger action-btn" onclick="stopProgram(\'' + name + '\');"><i class="fas fa-stop"></i> 停止</button>';
+                    action = action + '<button type="button" disabled class="btn btn-warning action-btn" onclick="restartProgram(\'' + name + '\');"><i class="fas fa-sync"></i> 重启</button>';
+                }
+                
+                let logLink = '<a href="/log?name=' + name + '" class="log-link"><i class="fas fa-file-alt"></i> 查看日志</a>';
+                action = action + logLink;
+            } else {
+                // 非进程实例（普通程序）的操作按钮
+                if (statename === "运行中" || statename === "启动中") {
+                    action = '<button type="button" disabled class="btn btn-success action-btn" onclick="startProgram(\'' + name + '\');"><i class="fas fa-play"></i> 启动</button>';
+                    action = action + '<button type="button" class="btn btn-danger action-btn" onclick="stopProgram(\'' + name + '\');"><i class="fas fa-stop"></i> 停止</button>';
+                    action = action + '<button type="button" class="btn btn-warning action-btn" onclick="restartProgram(\'' + name + '\');"><i class="fas fa-sync"></i> 重启</button>';
+                } else {
+                    action = '<button type="button" class="btn btn-success action-btn" onclick="startProgram(\'' + name + '\');"><i class="fas fa-play"></i> 启动</button>';
+                    action = action + '<button type="button" disabled class="btn btn-danger action-btn" onclick="stopProgram(\'' + name + '\');"><i class="fas fa-stop"></i> 停止</button>';
+                    action = action + '<button type="button" disabled class="btn btn-warning action-btn" onclick="restartProgram(\'' + name + '\');"><i class="fas fa-sync"></i> 重启</button>';
+                }
+                
+                // 添加查看、修改、复制和删除按钮
+                action = action + '<button type="button" class="btn btn-info action-btn" onclick="viewProgram(\'' + name + '\');"><i class="fas fa-eye"></i> 查看</button>';
+                action = action + '<button type="button" class="btn btn-primary action-btn" onclick="editProgram(\'' + name + '\');"><i class="fas fa-edit"></i> 修改</button>';
+                action = action + '<button type="button" class="btn btn-success action-btn" onclick="copyProgram(\'' + name + '\');"><i class="fas fa-copy"></i> 复制</button>';
+                action = action + '<button type="button" class="btn btn-danger action-btn" onclick="deleteProgram(\'' + name + '\');"><i class="fas fa-trash"></i> 删除</button>';
+                
+                let logLink = '<a href="/log?name=' + name + '" class="log-link"><i class="fas fa-file-alt"></i> 查看日志</a>';
+                action = action + logLink;
+            }
+
+            programs[i]['name'] = displayName;
+            programs[i]['action'] = action;
+            programs[i]['statename'] = '<span class="' + statusClass + '">' + statename + '</span>';
+            
+            // 添加程序组字段
+            if (isProcessInstance) {
+                programs[i]['group_name'] = '<span class="badge badge-info">' + baseName + '</span>';
+            } else {
+                programs[i]['group_name'] = '<span class="badge badge-secondary">-</span>';
+            }
+            
+            // 添加到新的程序列表
+            newPrograms.push(programs[i]);
+        }
+        
+        // 替换原来的程序列表
+        programs.length = 0;
+        for (var i = 0; i < newPrograms.length; i++) {
+            programs.push(newPrograms[i]);
+            
+            // 确保command字段存在
+            if (!programs[i]['command']) {
+                // 从GetProgramInfo API获取命令
+                $.ajax({
+                    type: "GET",
+                    url: "/program/info/" + programs[i]['name'],  // 修改：使用 programs[i]['name']
+                    async: false,
+                    success: function(data) {
+                        programs[i]['command'] = data.command || "未设置";
+                    },
+                    error: function() {
+                        programs[i]['command'] = "未知";
+                    }
+                });
+            }
+        }
+    }
+
+    function confirm_dialog(confirm) {
+        $('#my-modal-title').text(confirm['title']);
+        $('#my-modal-message').text(confirm['message']);
+        $('#my-modal-cancel-btn').text(confirm['cancel-text']);
+        $('#my-modal-confirm-btn').text(confirm['confirm-text']);
+        $('#my-modal-confirm-btn').unbind('click');
+        if (confirm.hasOwnProperty('cancel-hide') && confirm['cancel-hide']) {
+            $('#my-modal-cancel-btn').hide();
+        } else {
+            $('#my-modal-cancel-btn').show();
+        }
+        $('#my-modal-confirm-btn').click(confirm['confirm-onclick']);
+        $("#myModal").modal('show');
+    }
+
+    function showToast(title, message, type) {
+        var toastHtml = '<div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">' +
+            '<div class="toast-header bg-' + type + ' text-white">' +
+            '<strong class="mr-auto">' + title + '</strong>' +
+            '<button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">' +
+            '<span aria-hidden="true">&times;</span>' +
+            '</button>' +
+            '</div>' +
+            '<div class="toast-body">' + message + '</div>' +
+            '</div>';
+            
+        $('#toast-container').append(toastHtml);
+        $('.toast').toast('show');
+        
+        // 自动移除已关闭的 toast
+        $('.toast').on('hidden.bs.toast', function () {
+            $(this).remove();
+        });
+    }
+
+    function shutdown_supervisor() {
+        confirm_dialog({
+            'title': "关闭确认",
+            'message': "确定要关闭 supervisor 吗？",
+            'cancel-text': "取消",
+            'confirm-text': "关闭",
+            'confirm-onclick': function () {
+                // 关闭对话框
+                $("#myModal").modal('hide');
+                
+                $.ajax({
+                    type: "PUT",
+                    url: "/supervisor/shutdown",
+                    contentType: "application/json",
+                    dataType: "text",
+                    success: function (data, status, jqXHR) {
+                        showToast("成功", "Supervisor 正在关闭", "success");
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        showToast("错误", "关闭 Supervisor 失败", "danger");
+                    }
+                });
+            }
+        });
+    };
+
+    function reload_supervisor() {
+        confirm_dialog({
+            'title': "重载确认",
+            'message': "确定要重载 supervisor 吗？",
+            'cancel-text': "取消",
+            'confirm-text': "重载",
+            'confirm-onclick': function () {
+                // 关闭对话框
+                $("#myModal").modal('hide');
+                
+                $.ajax({
+                    type: "POST",
+                    url: "/supervisor/reload",
+                    contentType: "application/json",
+                    dataType: "text",
+                    success: function (data, status, jqXHR) {
+                        list_programs();
+                        showToast("成功", "Supervisor 配置已重载", "success");
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        list_programs();
+                        showToast("警告", "重载请求已发送，但返回了错误", "warning");
+                    }
+                });
+            }
+        });
+    }
+
+    function get_selected_programs() {
+        selected = $("#programs").bootstrapTable('getSelections');
+        programs = [];
+        for (i in selected) {
+            programs.push(selected[i]['name']);
+        }
+        return programs;
+    }
+    
+    function start_select() {
+        programs = get_selected_programs();
+        if (programs.length <= 0) {
+            showToast("警告", "未选择任何程序", "warning");
+            return;
+        }
+        $.ajax({
+            type: "POST",
+            url: "/program/startPrograms",
+            contentType: "application/json",
+            data: JSON.stringify(programs),
+            success: function (data, status, jqXHR) {
+                list_programs();
+                showToast("成功", "已启动选中的程序", "success");
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                list_programs();
+                showToast("错误", "启动选中程序失败", "danger");
+            }
+        });
+    }
+
+    function stop_select() {
+        programs = get_selected_programs();
+        if (programs.length <= 0) {
+            showToast("警告", "未选择任何程序", "warning");
+            return;
+        }
+        
+                confirm_dialog({
+                    'title': "停止确认",
+                    'message': "确定要停止选中的 " + programs.length + " 个程序吗？",
+                    'cancel-text': "取消",
+                    'confirm-text': "停止",
+                    'confirm-onclick': function () {
+                        // 关闭对话框
+                        $("#myModal").modal('hide');
+                        
+                        $.ajax({
+                    type: "POST",
+                    url: "/program/stopPrograms",
+                    contentType: "application/json",
+                    data: JSON.stringify(programs),
+                    success: function (data, status, jqXHR) {
+                        list_programs();
+                        showToast("成功", "已停止选中的程序", "success");
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        list_programs();
+                        showToast("错误", "停止选中程序失败", "danger");
+                    }
+                });
+            }
+        });
+    }
+
+    function list_programs() {
+        $.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "/program/list",
+            success: function (data, status, jqXHR) {
+                programs = data;
+                refreshDisplay();
+                updateLastRefreshTime();
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                programs = [];
+                refreshDisplay();
+                showToast("错误", "获取程序列表失败", "danger");
+            }
+        });
+    }
+    
+    function updateLastRefreshTime() {
+        var now = new Date();
+        var timeString = now.getHours() + ':' + 
+                        (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + ':' + 
+                        (now.getSeconds() < 10 ? '0' : '') + now.getSeconds();
+        $('#last-refresh-time').text(timeString);
+    }
+
+    // 新增程序
+    function addNewProgram() {
+        // 清空表单
+        $('#program-form')[0].reset();
+        $('#programFormTitle').text('新增程序');
+        $('#program-form-submit-btn').text('添加');
+        $('#program-form-submit-btn').unbind('click').click(function() {
+            submitAddProgram();
+        });
+        $('#programFormModal').modal('show');
+    }
+
+    // 提交新增程序
+    function submitAddProgram() {
+        var programData = {
+            name: $('#program-name').val(),
+            command: $('#program-command').val(),
+            autostart: $('#program-autostart').prop('checked'),
+            autorestart: $('#program-autorestart').prop('checked'),
+            environment: $('#program-environment').val(),
+            directory: $('#program-directory').val(),
+            user: $('#program-user').val(),
+            stdout_logfile: $('#program-stdout-logfile').val(),
+            stderr_logfile: $('#program-stderr-logfile').val(),
+            process_name: $('#program-process-name').val(),
+            numprocs: parseInt($('#program-numprocs').val())
+        };
+
+        // 验证必填字段
+        if (!programData.name || !programData.command) {
+            showToast("错误", "程序名称和命令不能为空", "danger");
+            return;
+        }
+
+        // 发送请求添加程序
+        $.ajax({
+            type: "POST",
+            url: "/program/add",
+            contentType: "application/json",
+            data: JSON.stringify(programData),
+            success: function(data, status, jqXHR) {
+                $('#programFormModal').modal('hide');
+                showToast("成功", "程序 " + programData.name + " 已成功添加", "success");
+                list_programs(); // 刷新程序列表
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "添加程序失败: " + (jqXHR.responseJSON ? jqXHR.responseJSON.message : "未知错误"), "danger");
+            }
+        });
+    }
+
+    // 查看程序详情
+    function viewProgram(name) {
+        // 获取程序详情
+        $.ajax({
+            type: "GET",
+            url: "/program/info/" + name,
+            success: function(data, status, jqXHR) {
+                // 填充详情到模态框
+                $('#view-program-name').text(data.name);
+                $('#view-program-command').text(data.command || "未设置");
+                $('#view-program-autostart').text(data.autostart ? "是" : "否");
+                $('#view-program-autorestart').text(data.autorestart ? "是" : "否");
+                $('#view-program-environment').text(data.environment || "未设置");
+                $('#view-program-directory').text(data.directory || "未设置");
+                $('#view-program-user').text(data.user || "未设置");
+                $('#view-program-stdout-logfile').text(data.stdout_logfile || "未设置");
+                $('#view-program-stderr-logfile').text(data.stderr_logfile || "未设置");
+                $('#view-program-process-name').text(data.process_name || "%(program_name)s_%(process_num)02d");
+                $('#view-program-numprocs').text(data.numprocs || "1");
+                
+                // 显示模态框
+                $('#viewProgramModal').modal('show');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "获取程序详情失败", "danger");
+            }
+        });
+    }
+
+    // 修改程序
+    function editProgram(name) {
+        // 获取程序详情
+        $.ajax({
+            type: "GET",
+            url: "/program/info/" + name,
+            success: function(data, status, jqXHR) {
+                // 填充表单
+                $('#program-name').val(data.name);
+                $('#program-command').val(data.command || "");
+                $('#program-autostart').prop('checked', data.autostart);
+                $('#program-autorestart').prop('checked', data.autorestart);
+                $('#program-environment').val(data.environment || "");
+                $('#program-directory').val(data.directory || "");
+                $('#program-user').val(data.user || "");
+                $('#program-stdout-logfile').val(data.stdout_logfile || "");
+                $('#program-stderr-logfile').val(data.stderr_logfile || "");
+                $('#program-process-name').val(data.process_name || "%(program_name)s_%(process_num)02d");
+                $('#program-numprocs').val(data.numprocs || 1);
+                
+                // 设置表单标题和提交按钮
+                $('#programFormTitle').text('修改程序');
+                $('#program-form-submit-btn').text('保存');
+                $('#program-form-submit-btn').unbind('click').click(function() {
+                    submitEditProgram(name);
+                });
+                
+                // 显示模态框
+                $('#programFormModal').modal('show');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "获取程序详情失败", "danger");
+            }
+        });
+    }
+
+    // 提交修改程序
+    function submitEditProgram(name) {
+        var programData = {
+            name: $('#program-name').val(),
+            command: $('#program-command').val(),
+            autostart: $('#program-autostart').prop('checked'),
+            autorestart: $('#program-autorestart').prop('checked'),
+            environment: $('#program-environment').val(),
+            directory: $('#program-directory').val(),
+            user: $('#program-user').val(),
+            stdout_logfile: $('#program-stdout-logfile').val(),
+            stderr_logfile: $('#program-stderr-logfile').val(),
+            process_name: $('#program-process-name').val(),
+            numprocs: parseInt($('#program-numprocs').val())
+        };
+
+        // 验证必填字段
+        if (!programData.name || !programData.command) {
+            showToast("错误", "程序名称和命令不能为空", "danger");
+            return;
+        }
+
+        // 发送请求修改程序
+        $.ajax({
+            type: "PUT",
+            url: "/program/update/" + name,
+            contentType: "application/json",
+            data: JSON.stringify(programData),
+            success: function(data, status, jqXHR) {
+                $('#programFormModal').modal('hide');
+                showToast("成功", "程序 " + programData.name + " 已成功更新", "success");
+                list_programs(); // 刷新程序列表
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "更新程序失败: " + (jqXHR.responseJSON ? jqXHR.responseJSON.message : "未知错误"), "danger");
+            }
+        });
+    }
+
+    // 复制程序
+    function copyProgram(name) {
+        // 获取程序详情
+        $.ajax({
+            type: "GET",
+            url: "/program/info/" + name,
+            success: function(data, status, jqXHR) {
+                // 填充表单
+                $('#program-copy-name').val(data.name + '_copy');
+                $('#program-copy-command').val(data.command || "");
+                $('#program-copy-autostart').prop('checked', data.autostart);
+                $('#program-copy-autorestart').prop('checked', data.autorestart);
+                $('#program-copy-environment').val(data.environment || "");
+                $('#program-copy-directory').val(data.directory || "");
+                $('#program-copy-user').val(data.user || "");
+                $('#program-copy-stdout-logfile').val(data.stdout_logfile || "");
+                $('#program-copy-stderr-logfile').val(data.stderr_logfile || "");
+                $('#program-copy-process-name').val(data.process_name || "%(program_name)s_%(process_num)02d");
+                $('#program-copy-numprocs').val(data.numprocs || 1);
+                
+                // 保存源程序名称
+                $('#copy-source-program').text(data.name);
+                
+                // 显示复制程序模态框
+                $('#copyProgramModal').modal('show');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "获取程序详情失败", "danger");
+            }
+        });
+    }
+    
+    // 提交复制程序
+    function submitCopyProgram() {
+        var sourceName = $('#copy-source-program').text();
+        var programData = {
+            name: $('#program-copy-name').val(),
+            command: $('#program-copy-command').val(),
+            autostart: $('#program-copy-autostart').prop('checked'),
+            autorestart: $('#program-copy-autorestart').prop('checked'),
+            environment: $('#program-copy-environment').val(),
+            directory: $('#program-copy-directory').val(),
+            user: $('#program-copy-user').val(),
+            stdout_logfile: $('#program-copy-stdout-logfile').val(),
+            stderr_logfile: $('#program-copy-stderr-logfile').val(),
+            process_name: $('#program-copy-process-name').val(),
+            numprocs: parseInt($('#program-copy-numprocs').val())
+        };
+        
+        // 验证必填字段
+        if (!programData.name || !programData.command) {
+            showToast("错误", "程序名称和命令不能为空", "danger");
+            return;
+        }
+        
+        // 发送请求添加程序（使用添加API而不是复制API，因为我们需要修改所有参数）
+        $.ajax({
+            type: "POST",
+            url: "/program/add",
+            contentType: "application/json",
+            data: JSON.stringify(programData),
+            success: function(data, status, jqXHR) {
+                $('#copyProgramModal').modal('hide');
+                showToast("成功", "程序 " + sourceName + " 已成功复制为 " + programData.name, "success");
+                list_programs(); // 刷新程序列表
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                showToast("错误", "复制程序失败: " + (jqXHR.responseJSON ? jqXHR.responseJSON.message : "未知错误"), "danger");
+            }
+        });
+    }
+
+    // 删除程序
+    function deleteProgram(name) {
+        confirm_dialog({
+            'title': "删除确认",
+            'message': "确定要删除程序 " + name + " 吗？此操作不可恢复。",
+            'cancel-text': "取消",
+            'confirm-text': "删除",
+            'confirm-onclick': function() {
+                // 关闭对话框
+                $("#myModal").modal('hide');
+                
+                // 发送请求删除程序
+                $.ajax({
+                    type: "DELETE",
+                    url: "/program/delete/" + name,
+                    success: function(data, status, jqXHR) {
+                        showToast("成功", "程序 " + name + " 已成功删除", "success");
+                        list_programs(); // 刷新程序列表
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        showToast("错误", "删除程序失败", "danger");
+                    }
+                });
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        // 加载 Font Awesome
+        $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />');
+        
+        list_programs();
+        setInterval(list_programs, 5000);
+        
+        // 初始化 tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+
+<body>
+    <div class="header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-12">
+                    <h1><i class="fas fa-tasks logo"></i> Go-Supervisor 进程管理</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-cogs"></i> 进程控制
+            </div>
+            <div class="card-body">
+                <!-- 新增的管理按钮 -->
+                <div class="management-buttons">
+                    <button type="button" class="btn btn-success" onclick="addNewProgram();">
+                        <i class="fas fa-plus"></i> 新增程序
+                    </button>
+                </div>
+                
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-success" onclick="start_select();">
+                        <i class="fas fa-play"></i> 启动选中
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="stop_select();">
+                        <i class="fas fa-stop"></i> 停止选中
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="reload_supervisor();">
+                        <i class="fas fa-sync"></i> 重载配置
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="shutdown_supervisor();">
+                        <i class="fas fa-power-off"></i> 关闭服务
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table id="programs" class="table table-striped" data-toggle="table" data-click-to-select="true">
+                        <thead>
+                            <tr>
+                                <th data-field="state" data-checkbox="true"></th>
+                                <th data-field="group_name">程序组</th>
+                                <th data-field="name">程序名称</th>
+                                <th data-field="command">命令</th>
+                                <th data-field="statename">状态</th>
+                                <th data-field="description">描述</th>
+                                <th data-field="action">操作</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                
+                <div class="refresh-info">
+                    <span>上次刷新时间: <span id="last-refresh-time">--:--:--</span></span>
+                    <span> | </span>
+                    <span>自动刷新间隔: 5秒</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div aria-live="polite" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; min-width: 300px; z-index: 9999">
+        <div id="toast-container" style="position: absolute; top: 0; right: 0;"></div>
+    </div>
+
+    <!-- 确认对话框 Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="my-modal-title">确认</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="my-modal-message">确认信息</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="my-modal-cancel-btn" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="my-modal-confirm-btn">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 程序表单 Modal -->
+    <div class="modal fade" id="programFormModal" tabindex="-1" role="dialog" aria-labelledby="programFormModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="programFormTitle">程序表单</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="program-form">
+                        <div class="form-group">
+                            <label for="program-name">程序名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="program-name" placeholder="输入程序名称" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="program-command">命令 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="program-command" placeholder="输入要执行的命令" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="program-autostart" checked>
+                                    <label class="custom-control-label" for="program-autostart">自动启动</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="program-autorestart" checked>
+                                    <label class="custom-control-label" for="program-autorestart">自动重启</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="program-environment">环境变量</label>
+                            <input type="text" class="form-control" id="program-environment" placeholder="格式: KEY1=value1,KEY2=value2">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-directory">工作目录</label>
+                            <input type="text" class="form-control" id="program-directory" placeholder="程序运行的工作目录">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-user">运行用户</label>
+                            <input type="text" class="form-control" id="program-user" placeholder="程序运行的用户">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-stdout-logfile">标准输出日志文件</label>
+                            <input type="text" class="form-control" id="program-stdout-logfile" placeholder="标准输出日志文件路径">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-stderr-logfile">标准错误日志文件</label>
+                            <input type="text" class="form-control" id="program-stderr-logfile" placeholder="标准错误日志文件路径">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-process-name">进程名称格式</label>
+                            <input type="text" class="form-control" id="program-process-name" placeholder="例如: %(program_name)s_%(process_num)02d" value="%(program_name)s_%(process_num)02d">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-numprocs">进程数量</label>
+                            <input type="number" class="form-control" id="program-numprocs" placeholder="要启动的进程数量" value="1" min="1">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="program-form-submit-btn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 复制程序 Modal -->
+    <div class="modal fade" id="copyProgramModal" tabindex="-1" role="dialog" aria-labelledby="copyProgramModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">复制程序</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="program-copy-form">
+                        <div class="form-group">
+                            <label>源程序名称</label>
+                            <p id="copy-source-program" class="form-control-static"></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-name">新程序名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="program-copy-name" placeholder="输入新程序名称" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-command">命令 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="program-copy-command" placeholder="输入要执行的命令" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="program-copy-autostart" checked>
+                                    <label class="custom-control-label" for="program-copy-autostart">自动启动</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="program-copy-autorestart" checked>
+                                    <label class="custom-control-label" for="program-copy-autorestart">自动重启</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-environment">环境变量</label>
+                            <input type="text" class="form-control" id="program-copy-environment" placeholder="格式: KEY1=value1,KEY2=value2">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-directory">工作目录</label>
+                            <input type="text" class="form-control" id="program-copy-directory" placeholder="程序运行的工作目录">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-user">运行用户</label>
+                            <input type="text" class="form-control" id="program-copy-user" placeholder="程序运行的用户">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-stdout-logfile">标准输出日志文件</label>
+                            <input type="text" class="form-control" id="program-copy-stdout-logfile" placeholder="标准输出日志文件路径">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-stderr-logfile">标准错误日志文件</label>
+                            <input type="text" class="form-control" id="program-copy-stderr-logfile" placeholder="标准错误日志文件路径">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-process-name">进程名称格式</label>
+                            <input type="text" class="form-control" id="program-copy-process-name" placeholder="例如: %(program_name)s_%(process_num)02d" value="%(program_name)s_%(process_num)02d">
+                        </div>
+                        <div class="form-group">
+                            <label for="program-copy-numprocs">进程数量</label>
+                            <input type="number" class="form-control" id="program-copy-numprocs" placeholder="要启动的进程数量" value="1" min="1">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCopyProgram()">复制</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 查看程序详情 Modal -->
+    <div class="modal fade" id="viewProgramModal" tabindex="-1" role="dialog" aria-labelledby="viewProgramModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">程序详情</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">程序名称:</div>
+                        <div class="col-md-8" id="view-program-name"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">命令:</div>
+                        <div class="col-md-8" id="view-program-command"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">自动启动:</div>
+                        <div class="col-md-8" id="view-program-autostart"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">自动重启:</div>
+                        <div class="col-md-8" id="view-program-autorestart"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">环境变量:</div>
+                        <div class="col-md-8" id="view-program-environment"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">工作目录:</div>
+                        <div class="col-md-8" id="view-program-directory"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">运行用户:</div>
+                        <div class="col-md-8" id="view-program-user"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">标准输出日志:</div>
+                        <div class="col-md-8" id="view-program-stdout-logfile"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">标准错误日志:</div>
+                        <div class="col-md-8" id="view-program-stderr-logfile"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">进程名称格式:</div>
+                        <div class="col-md-8" id="view-program-process-name"></div>
+                    </div>
+                    <div class="divider"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 font-weight-bold">进程数量:</div>
+                        <div class="col-md-8" id="view-program-numprocs"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

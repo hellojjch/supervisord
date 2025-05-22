@@ -23,6 +23,15 @@ type Options struct {
 	Configuration string `short:"c" long:"configuration" description:"the configuration file"`
 	Daemon        bool   `short:"d" long:"daemon" description:"run as daemon"`
 	EnvFile       string `long:"env-file" description:"the environment file"`
+	
+	// Nacos配置选项
+	NacosServerAddr string `long:"nacos-server" description:"Nacos服务器地址，如 127.0.0.1:8848"`
+	NacosNamespace  string `long:"nacos-namespace" description:"Nacos命名空间ID"`
+	NacosGroup      string `long:"nacos-group" default:"DEFAULT_GROUP" description:"Nacos配置分组"`
+	NacosDataId     string `long:"nacos-dataid" description:"Nacos配置ID"`
+	NacosUsername   string `long:"nacos-username" description:"Nacos用户名"`
+	NacosPassword   string `long:"nacos-password" description:"Nacos密码"`
+	NacosNotUseCache bool  `long:"nacos-not-use-cache" description:"不使用Nacos缓存，直接从服务器获取最新配置"`
 }
 
 func init() {
@@ -130,10 +139,48 @@ func runServer() {
 	// infinite loop for handling Restart ('reload' command)
 	loadEnvFile()
 	for {
-		if len(options.Configuration) <= 0 {
-			options.Configuration, _ = findSupervisordConf()
+		var s *Supervisor
+		var err error
+		
+		// 检查是否使用Nacos配置
+		if options.NacosServerAddr != "" && options.NacosDataId != "" {
+			// 使用Nacos配置
+			nacosConfig := config.NacosConfig{
+				ServerAddr:  options.NacosServerAddr,
+				Namespace:   options.NacosNamespace,
+				Group:       options.NacosGroup,
+				DataId:      options.NacosDataId,
+				Username:    options.NacosUsername,
+				Password:    options.NacosPassword,
+				NotUseCache: options.NacosNotUseCache,
+			}
+			
+			log.WithFields(log.Fields{
+				"serverAddr":  nacosConfig.ServerAddr,
+				"namespace":   nacosConfig.Namespace,
+				"group":       nacosConfig.Group,
+				"dataId":      nacosConfig.DataId,
+				"not_use_cache": nacosConfig.NotUseCache,
+			}).Info("使用Nacos配置")
+			
+			s, err = NewSupervisorWithNacos(nacosConfig)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Fatal("无法创建使用Nacos配置的Supervisor")
+				os.Exit(1)
+			}
+		} else {
+			// 使用本地文件配置
+			if len(options.Configuration) <= 0 {
+				options.Configuration, _ = findSupervisordConf()
+			}
+			log.WithFields(log.Fields{
+				"file": options.Configuration,
+			}).Info("使用本地配置文件")
+			s = NewSupervisor(options.Configuration)
 		}
-		s := NewSupervisor(options.Configuration)
+		
 		initSignals(s)
 		if _, _, _, sErr := s.Reload(true); sErr != nil {
 			panic(sErr)
@@ -144,6 +191,16 @@ func runServer() {
 
 // Get the supervisord log file
 func getSupervisordLogFile(configFile string) string {
+	// 如果使用Nacos配置，则使用默认日志文件
+	if options.NacosServerAddr != "" && options.NacosDataId != "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			cwd = "."
+		}
+		return filepath.Join(cwd, "supervisord.log")
+	}
+	
+	// 使用本地配置文件
 	configFileDir := filepath.Dir(configFile)
 	env := config.NewStringExpression("here", configFileDir)
 	myini := ini.NewIni()
